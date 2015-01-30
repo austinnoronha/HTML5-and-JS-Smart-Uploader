@@ -1,0 +1,119 @@
+<html>
+<head>
+<title>File Uploading Form</title>
+<script src="js/jquery-1.10.2.js" type="text/javascript"></script>
+<script src="js/jquery.iframe-transport.js" type="text/javascript"></script>
+<style>
+#progress {width: 300px;}
+#progress p{
+	display: block;
+	width: 0px;
+	padding: 2px 5px;
+	margin: 2px 0;
+	border: 1px inset #446;
+	border-radius: 5px;
+}
+#progress p.success{ background: #0c0 none 0 0 no-repeat; }
+#progress p.failed{ background: #c00 none 0 0 no-repeat;}
+</style>
+</head>
+<body>
+	<h3>File Upload:</h3>
+	<label>Select a file to upload:</label><br />
+	<form id="frmUpload" name="frmUpload" action="./upload.php" method="post" enctype="multipart/form-data">
+		<input type="file" name="upldfile" size="50" id="fileNew" />
+		<br />
+		<div id="progress"></div>
+		<br />
+		<span id="samplePreview"></span>
+	</form>
+
+<script type="text/javascript">
+$(document).ready(function(){
+   
+	var isHTML5Support = typeof FileReader != 'undefined' || 'draggable' in document.createElement('span') || !!window.FormData || 'upload' in new XMLHttpRequest;
+
+	var getFileSize = function(bytes) {
+		if( isNaN( bytes ) ){ return; }
+		
+		var i = Math.floor( Math.log(bytes) / Math.log(1024) );
+		return ( bytes / Math.pow(1024, i) ).toFixed(2) * 1 + ' ' + ['B', 'kB', 'MB', 'GB', 'TB'][i];
+    }
+
+	var frmObj = $("#frmUpload");
+	var fileObj = $("#fileNew", frmObj);
+	var samplePreviewObj = $("#samplePreview", frmObj);
+	var progressObj = $("#progress", frmObj);
+	var url = "upload.php";
+
+	var initHTML5Uploader = function(){
+		fileObj.on("change", function(){
+			var xhr = new XMLHttpRequest();
+			var formData = new FormData();
+			var fileData = $(this)[0].files[0];
+			progressObj.html("");
+			var progress = progressObj.append("</p>");
+
+			// create progress bar
+			progress.append("<span>upload : " + fileData.name+"</span>");
+			
+			xhr.open('POST', url, true);
+			formData.append("upldfile", fileData);
+
+			xhr.upload.addEventListener("progress", function(event) {
+				progress.find("span").html("").html( "Uploaded "+getFileSize(event.loaded)+" of "+getFileSize(event.total) );
+				var percent = (event.loaded / event.total) * 100;
+				samplePreviewObj.html("").html(Math.round(percent)+"% uploaded... please wait");
+				progress.find("p").addClass("success").css("width",percent+"%");
+			}, false);
+
+			xhr.upload.onload = function(e){
+				console.log("[onload ] -> ",e);
+			};
+
+			xhr.onreadystatechange = function(ev){
+				if(xhr.readyState == 4){
+					var className = (xhr.status == 200 ? "success" : "failure");
+					progress.addClass(className);
+					if(xhr.status == 200){
+						samplePreviewObj.html("").html(xhr.responseText);
+					}
+					else{
+						samplePreviewObj.html("").html("Issue while uploading file. Please cjeck your network connection.");
+					}
+				}
+			};
+
+			xhr.send(formData);
+		});
+	};
+	
+	var initJsUploader = function(){
+		 $('#frmUpload').on('change', '#fileNew', function(evt) {
+			var form = $(this.form).addClass('loading');
+			$("#progress").html("Loading...");
+			evt.preventDefault();
+			$.ajax(form.prop('action'), {
+			  dataType: 'text',
+			  files: form.find(':file'),
+			  iframe: true,
+			  processData: false
+			}).always(function() {
+			  $("#progress").html("Done...");
+			}).done(function(data) {
+			  $("#progress").html("Completed .. "+data);
+			  form.find(':file').val('');
+			});
+		  });
+	};
+
+	if(isHTML5Support){
+		initHTML5Uploader();   
+	}else{
+		initJsUploader();
+	}
+});
+</script>
+
+</body>
+</html>
